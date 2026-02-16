@@ -57,7 +57,7 @@ const CATEGORY_LABEL_FONT_SIZE = 13;
 const SUBCATEGORY_LABEL_FONT_SIZE = 10;
 const SUBCATEGORY_INDENT = 14;
 const GROUP_GAP_SIZE = 0.8;
-const LABEL_OFFSET_X = -2;
+const LABEL_OFFSET_X = 2;
 
 const formatDateRange = (start?: number, end?: number) => {
   if (start === undefined || end === undefined) {
@@ -377,7 +377,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     convertInteger(yAxisTitleMargin),
     convertInteger(xAxisTitleMargin),
   );
-  const compactLeftPadding = Math.max(10, padding.left - 8);
+  const compactLeftPadding = Math.max(16, padding.left + 56);
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
