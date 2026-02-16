@@ -53,6 +53,16 @@ import { convertInteger } from '../utils/convertInteger';
 import { getTooltipLabels } from '../utils/tooltip';
 import { Dimension, ELEMENT_HEIGHT_SCALE } from './constants';
 
+const CATEGORY_LABEL_FONT_SIZE = 13;
+const SUBCATEGORY_LABEL_FONT_SIZE = 11;
+
+const formatDateRange = (start?: number, end?: number) => {
+  if (start === undefined || end === undefined) {
+    return undefined;
+  }
+  return `${dayjs.utc(start).format('MMM D')} - ${dayjs.utc(end).format('MMM D')}`;
+};
+
 const renderItem: CustomSeriesRenderItem = (params, api) => {
   const startX = api.value(Dimension.StartTime);
   const endX = api.value(Dimension.EndTime);
@@ -156,12 +166,29 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
 
   const seriesMap = groupData(data, dimensionLabel);
 
+  const categoryTimeBounds = new Map<
+    DataRecordValue | undefined,
+    { minStart: number; maxEnd: number }
+  >();
+  const subcategoryTimeBounds = new Map<string, { minStart: number; maxEnd: number }>();
+
   const seriesInCategoriesMap = new Map<
     DataRecordValue | undefined,
     Map<DataRecordValue | undefined, number>
   >();
   data.forEach(datum => {
     const category = datum[yAxisLabel];
+    const start = Number(datum[startTimeLabel]);
+    const end = Number(datum[endTimeLabel]);
+
+    if (!Number.isNaN(start) && !Number.isNaN(end)) {
+      const categoryBounds = categoryTimeBounds.get(category);
+      categoryTimeBounds.set(category, {
+        minStart: categoryBounds ? Math.min(categoryBounds.minStart, start) : start,
+        maxEnd: categoryBounds ? Math.max(categoryBounds.maxEnd, end) : end,
+      });
+    }
+
     let dimensionValue: DataRecordValue | undefined;
     if (dimensionLabel) {
       if (legendState && !legendState[String(datum[dimensionLabel])]) {
@@ -169,6 +196,17 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       }
       if (subcategories) {
         dimensionValue = datum[dimensionLabel];
+
+        if (!Number.isNaN(start) && !Number.isNaN(end)) {
+          const key = `${String(category)}||${String(dimensionValue)}`;
+          const subcategoryBounds = subcategoryTimeBounds.get(key);
+          subcategoryTimeBounds.set(key, {
+            minStart: subcategoryBounds
+              ? Math.min(subcategoryBounds.minStart, start)
+              : start,
+            maxEnd: subcategoryBounds ? Math.max(subcategoryBounds.maxEnd, end) : end,
+          });
+        }
       }
     }
     const seriesMap = seriesInCategoriesMap.get(category);
@@ -198,7 +236,8 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
   });
 
   const borderLines: { yAxis: number }[] = [];
-  const categoryLines: { yAxis: number; name?: string }[] = [];
+  const categoryLines: { yAxis: number; name?: string; range?: string }[] = [];
+  const subcategoryLines: { yAxis: number; name?: string; range?: string }[] = [];
   let sum = 0;
   let prevSum = 0;
   Array.from(seriesInCategoriesMap.entries()).forEach(([key, map]) => {
@@ -206,7 +245,25 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     categoryLines.push({
       yAxis: seriesCount - (sum + prevSum) / 2,
       name: key ? String(key) : undefined,
+      range: formatDateRange(
+        categoryTimeBounds.get(key)?.minStart,
+        categoryTimeBounds.get(key)?.maxEnd,
+      ),
     });
+
+    if (subcategories) {
+      Array.from(map.entries()).forEach(([subCategoryKey, subCategoryIndex]) => {
+        const subCategoryRange = subcategoryTimeBounds.get(
+          `${String(key)}||${String(subCategoryKey)}`,
+        );
+        subcategoryLines.push({
+          yAxis: seriesCount - (prevSum + subCategoryIndex + 0.5),
+          name: subCategoryKey ? String(subCategoryKey) : undefined,
+          range: formatDateRange(subCategoryRange?.minStart, subCategoryRange?.maxEnd),
+        });
+      });
+    }
+
     borderLines.push({ yAxis: seriesCount - sum });
     prevSum = sum;
   });
@@ -323,10 +380,65 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: true,
           position: 'start',
-          formatter: '{b}',
+          formatter: params =>
+            params.name
+              ? `${params.name}${
+                  (params.data as { range?: string } | undefined)?.range
+                    ? `\n${(params.data as { range?: string }).range}`
+                    : ''
+                }`
+              : '',
           color: theme.colorText,
+          fontSize: CATEGORY_LABEL_FONT_SIZE,
+          lineHeight: CATEGORY_LABEL_FONT_SIZE + 3,
         },
         data: categoryLines,
+      },
+    },
+    {
+      animation: false,
+      type: 'line',
+      markLine: {
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          // eslint-disable-next-line theme-colors/no-literal-colors
+          color: '#00000000',
+        },
+        label: {
+          show: subcategories,
+          position: 'start',
+          formatter: params =>
+            params.name
+              ? `${params.name}${
+                  (params.data as { range?: string } | undefined)?.range
+                    ? `   ${(params.data as { range?: string }).range}`
+                    : ''
+                }`
+              : '',
+          color: theme.colorText,
+          fontSize: SUBCATEGORY_LABEL_FONT_SIZE,
+        },
+        data: subcategoryLines,
+      },
+    },
+    {
+      animation: false,
+      type: 'line',
+      markLine: {
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          width: 2,
+          // eslint-disable-next-line theme-colors/no-literal-colors
+          color: '#3b82f6',
+        },
+        label: {
+          show: false,
+        },
+        data: [{ xAxis: Date.now() }],
       },
     },
   );

@@ -90,7 +90,7 @@ describe('Gantt transformProps', () => {
       chartProps as EchartsGanttChartProps,
     );
 
-    expect(transformedProps.echartOptions.series).toHaveLength(4);
+    expect(transformedProps.echartOptions.series).toHaveLength(6);
     const series = transformedProps.echartOptions.series as any[];
     const series0 = series[0];
     const series1 = series[1];
@@ -248,19 +248,76 @@ describe('Gantt transformProps', () => {
       animation: false,
       markLine: {
         data: [
-          { yAxis: 1.5, name: 'first' },
-          { yAxis: 0.5, name: 'second' },
+          {
+            yAxis: 1.5,
+            name: 'first',
+            range: 'Feb 1 - Feb 1',
+          },
+          {
+            yAxis: 0.5,
+            name: 'second',
+            range: 'Feb 1 - Feb 1',
+          },
         ],
-        label: {
+        label: expect.objectContaining({
           show: true,
           position: 'start',
-          formatter: '{b}',
+          formatter: expect.any(Function),
           color: 'rgba(0,0,0,0.88)',
-        },
+          fontSize: 13,
+        }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
           type: 'solid',
         }),
+        silent: true,
+        symbol: ['none', 'none'],
+      },
+    });
+    expect(series[4]).toEqual({
+      type: 'line',
+      animation: false,
+      markLine: {
+        data: [
+          {
+            yAxis: 1.5,
+            name: 'series value 1',
+            range: 'Feb 1 - Feb 1',
+          },
+          {
+            yAxis: 0.5,
+            name: 'series value 2',
+            range: 'Feb 1 - Feb 1',
+          },
+        ],
+        label: expect.objectContaining({
+          show: true,
+          position: 'start',
+          formatter: expect.any(Function),
+          color: 'rgba(0,0,0,0.88)',
+          fontSize: 11,
+        }),
+        lineStyle: expect.objectContaining({
+          color: '#00000000',
+          type: 'solid',
+        }),
+        silent: true,
+        symbol: ['none', 'none'],
+      },
+    });
+    expect(series[5]).toEqual({
+      type: 'line',
+      animation: false,
+      markLine: {
+        data: [{ xAxis: expect.any(Number) }],
+        label: {
+          show: false,
+        },
+        lineStyle: {
+          type: 'solid',
+          width: 2,
+          color: '#3b82f6',
+        },
         silent: true,
         symbol: ['none', 'none'],
       },
