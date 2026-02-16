@@ -55,6 +55,8 @@ import { Dimension, ELEMENT_HEIGHT_SCALE } from './constants';
 
 const CATEGORY_LABEL_FONT_SIZE = 13;
 const SUBCATEGORY_LABEL_FONT_SIZE = 11;
+const SUBCATEGORY_INDENT = 12;
+const GROUP_GAP_SIZE = 0.8;
 
 const formatDateRange = (start?: number, end?: number) => {
   if (start === undefined || end === undefined) {
@@ -106,6 +108,7 @@ const renderItem: CustomSeriesRenderItem = (params, api) => {
       y: startCoord[1] - height - (baseHeight - height) / 2,
       width,
       height,
+      r: 3,
     },
     style: api.style(),
   };
@@ -208,31 +211,56 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     }
   });
 
-  let seriesCount = 0;
+  let visualSeriesCount = 0;
   const categoryAndSeriesToIndexMap: typeof seriesInCategoriesMap = new Map();
-  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map]) => {
+  const categoryPositionMap = new Map<
+    DataRecordValue | undefined,
+    {
+      start: number;
+      end: number;
+      size: number;
+    }
+  >();
+
+  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map], groupIndex, arr) => {
+    const groupSize = map.size;
+    const groupStart = visualSeriesCount;
+
     categoryAndSeriesToIndexMap.set(
       key,
       new Map(
-        Array.from(map.entries()).map(([key2, idx]) => [
-          key2,
-          seriesCount + idx,
-        ]),
+        Array.from(map.entries()).map(([key2, idx]) => [key2, groupStart + idx]),
       ),
     );
-    seriesCount += map.size;
+
+    categoryPositionMap.set(key, {
+      start: groupStart,
+      end: groupStart + groupSize - 1,
+      size: groupSize,
+    });
+
+    visualSeriesCount += groupSize;
+
+    if (groupIndex < arr.length - 1) {
+      visualSeriesCount += GROUP_GAP_SIZE;
+    }
   });
 
   const borderLines: { yAxis: number }[] = [];
   const rowLines: { yAxis: number }[] = [];
   const categoryLines: { yAxis: number; name?: string; range?: string }[] = [];
   const subcategoryLines: { yAxis: number; name?: string }[] = [];
-  let sum = 0;
-  let prevSum = 0;
-  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map]) => {
-    sum += map.size;
+
+  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map], groupIndex, arr) => {
+    const position = categoryPositionMap.get(key);
+    if (!position) {
+      return;
+    }
+
     categoryLines.push({
-      yAxis: subcategories ? seriesCount - prevSum : seriesCount - (sum + prevSum) / 2,
+      yAxis: subcategories
+        ? visualSeriesCount - position.start
+        : visualSeriesCount - (position.start + position.end + 1) / 2,
       name: key ? String(key) : undefined,
       range: formatDateRange(
         categoryTimeBounds.get(key)?.minStart,
@@ -241,20 +269,26 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     });
 
     if (subcategories) {
-      Array.from(map.entries()).forEach(([subCategoryKey, subCategoryIndex]) => {
+      Array.from(map.entries()).forEach(([subCategoryKey], subCategoryIndex) => {
+        const rowIndex = position.start + subCategoryIndex;
+
         subcategoryLines.push({
-          yAxis: seriesCount - (prevSum + subCategoryIndex + 0.5),
+          yAxis: visualSeriesCount - (rowIndex + 0.5),
           name: subCategoryKey ? String(subCategoryKey) : undefined,
         });
 
         if (subCategoryIndex > 0) {
-          rowLines.push({ yAxis: seriesCount - (prevSum + subCategoryIndex) });
+          rowLines.push({ yAxis: visualSeriesCount - rowIndex });
         }
       });
     }
 
-    borderLines.push({ yAxis: seriesCount - sum });
-    prevSum = sum;
+    if (groupIndex < arr.length - 1) {
+      borderLines.push({
+        yAxis:
+          visualSeriesCount - (position.end + 1 + GROUP_GAP_SIZE / 2),
+      });
+    }
   });
 
   const xAxisFormatter = getXAxisFormatter(xAxisTimeFormat);
@@ -326,7 +360,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           datum[startTimeLabel],
           datum[endTimeLabel],
           getIndex(datum),
-          seriesCount,
+          visualSeriesCount,
           ...Object.values(datum),
         ],
       })),
@@ -345,9 +379,10 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         silent: true,
         symbol: ['none', 'none'],
         lineStyle: {
-          type: 'dashed',
+          type: 'solid',
+          width: 1,
           // eslint-disable-next-line theme-colors/no-literal-colors
-          color: '#dbe0ea',
+          color: '#d9dee8',
         },
         label: {
           show: false,
@@ -363,8 +398,9 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         symbol: ['none', 'none'],
         lineStyle: {
           type: 'solid',
+          width: 1,
           // eslint-disable-next-line theme-colors/no-literal-colors
-          color: '#e9edf5',
+          color: '#eceff5',
         },
         label: {
           show: false,
@@ -418,8 +454,9 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           position: 'start',
           align: 'left',
           formatter: params => (params.name ? `${params.name}` : ''),
-          color: theme.colorText,
+          color: (theme as { colorTextLabel?: string }).colorTextLabel ?? theme.colorText,
           fontSize: SUBCATEGORY_LABEL_FONT_SIZE,
+          padding: [0, 0, 0, SUBCATEGORY_INDENT],
         },
         data: subcategoryLines,
       },
@@ -470,6 +507,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           dimensionLabel ? params.seriesName : undefined,
         ),
     },
+    backgroundColor: '#f7f8fa',
     legend: {
       ...getLegendProps(
         legendType,
@@ -532,7 +570,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       },
       type: AxisType.Value,
       min: 0,
-      max: seriesCount,
+      max: visualSeriesCount,
     },
   };
 

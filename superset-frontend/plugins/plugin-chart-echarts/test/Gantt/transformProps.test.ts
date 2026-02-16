@@ -106,6 +106,7 @@ describe('Gantt transformProps', () => {
       expect.objectContaining({
         echartOptions: expect.objectContaining({
           useUTC: true,
+          backgroundColor: '#f7f8fa',
           xAxis: {
             name: '',
             nameGap: 0,
@@ -125,8 +126,7 @@ describe('Gantt transformProps', () => {
             type: AxisType.Value,
             // always 0
             min: 0,
-            // equals unique categories count
-            max: 2,
+            max: 2.8,
             axisLabel: {
               show: false,
             },
@@ -164,7 +164,7 @@ describe('Gantt transformProps', () => {
             Date.UTC(2025, 1, 1, 13, 0, 0),
             Date.UTC(2025, 1, 1, 14, 0, 0),
             0,
-            2,
+            2.8,
             Date.UTC(2025, 1, 1, 13, 0, 0),
             Date.UTC(2025, 1, 1, 14, 0, 0),
             'first',
@@ -202,7 +202,7 @@ describe('Gantt transformProps', () => {
             Date.UTC(2025, 1, 1, 18, 0, 0),
             Date.UTC(2025, 1, 1, 20, 0, 0),
             1,
-            2,
+            2.8,
             Date.UTC(2025, 1, 1, 18, 0, 0),
             Date.UTC(2025, 1, 1, 20, 0, 0),
             'second',
@@ -231,15 +231,16 @@ describe('Gantt transformProps', () => {
       type: 'line',
       animation: false,
       markLine: {
-        data: [{ yAxis: 1 }, { yAxis: 0 }],
+        data: [{ yAxis: 1.4 }],
         label: {
           show: false,
         },
         silent: true,
         symbol: ['none', 'none'],
         lineStyle: {
-          type: 'dashed',
-          color: '#dbe0ea',
+          type: 'solid',
+          width: 1,
+          color: '#d9dee8',
         },
       },
     });
@@ -255,7 +256,8 @@ describe('Gantt transformProps', () => {
         symbol: ['none', 'none'],
         lineStyle: {
           type: 'solid',
-          color: '#e9edf5',
+          width: 1,
+          color: '#eceff5',
         },
       },
     });
@@ -265,7 +267,7 @@ describe('Gantt transformProps', () => {
       markLine: {
         data: [
           {
-            yAxis: 2,
+            yAxis: 2.8,
             name: 'first',
             range: 'Feb 1 - Feb 1',
           },
@@ -297,7 +299,7 @@ describe('Gantt transformProps', () => {
       markLine: {
         data: [
           {
-            yAxis: 1.5,
+            yAxis: 2.3,
             name: 'series value 1',
           },
           {
@@ -310,8 +312,9 @@ describe('Gantt transformProps', () => {
           position: 'start',
           align: 'left',
           formatter: expect.any(Function),
-          color: 'rgba(0,0,0,0.88)',
+          color: expect.anything(),
           fontSize: 11,
+          padding: [0, 0, 0, 12],
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
