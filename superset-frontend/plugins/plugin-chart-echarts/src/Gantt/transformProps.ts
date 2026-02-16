@@ -170,7 +170,6 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     DataRecordValue | undefined,
     { minStart: number; maxEnd: number }
   >();
-  const subcategoryTimeBounds = new Map<string, { minStart: number; maxEnd: number }>();
 
   const seriesInCategoriesMap = new Map<
     DataRecordValue | undefined,
@@ -196,17 +195,6 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       }
       if (subcategories) {
         dimensionValue = datum[dimensionLabel];
-
-        if (!Number.isNaN(start) && !Number.isNaN(end)) {
-          const key = `${String(category)}||${String(dimensionValue)}`;
-          const subcategoryBounds = subcategoryTimeBounds.get(key);
-          subcategoryTimeBounds.set(key, {
-            minStart: subcategoryBounds
-              ? Math.min(subcategoryBounds.minStart, start)
-              : start,
-            maxEnd: subcategoryBounds ? Math.max(subcategoryBounds.maxEnd, end) : end,
-          });
-        }
       }
     }
     const seriesMap = seriesInCategoriesMap.get(category);
@@ -237,13 +225,13 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
 
   const borderLines: { yAxis: number }[] = [];
   const categoryLines: { yAxis: number; name?: string; range?: string }[] = [];
-  const subcategoryLines: { yAxis: number; name?: string; range?: string }[] = [];
+  const subcategoryLines: { yAxis: number; name?: string }[] = [];
   let sum = 0;
   let prevSum = 0;
   Array.from(seriesInCategoriesMap.entries()).forEach(([key, map]) => {
     sum += map.size;
     categoryLines.push({
-      yAxis: seriesCount - (sum + prevSum) / 2,
+      yAxis: subcategories ? seriesCount - prevSum : seriesCount - (sum + prevSum) / 2,
       name: key ? String(key) : undefined,
       range: formatDateRange(
         categoryTimeBounds.get(key)?.minStart,
@@ -253,13 +241,9 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
 
     if (subcategories) {
       Array.from(map.entries()).forEach(([subCategoryKey, subCategoryIndex]) => {
-        const subCategoryRange = subcategoryTimeBounds.get(
-          `${String(key)}||${String(subCategoryKey)}`,
-        );
         subcategoryLines.push({
           yAxis: seriesCount - (prevSum + subCategoryIndex + 0.5),
           name: subCategoryKey ? String(subCategoryKey) : undefined,
-          range: formatDateRange(subCategoryRange?.minStart, subCategoryRange?.maxEnd),
         });
       });
     }
@@ -409,14 +393,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: subcategories,
           position: 'start',
-          formatter: params =>
-            params.name
-              ? `${params.name}${
-                  (params.data as { range?: string } | undefined)?.range
-                    ? `   ${(params.data as { range?: string }).range}`
-                    : ''
-                }`
-              : '',
+          formatter: params => (params.name ? `${params.name}` : ''),
           color: theme.colorText,
           fontSize: SUBCATEGORY_LABEL_FONT_SIZE,
         },

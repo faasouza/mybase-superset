@@ -249,12 +249,12 @@ describe('Gantt transformProps', () => {
       markLine: {
         data: [
           {
-            yAxis: 1.5,
+            yAxis: 2,
             name: 'first',
             range: 'Feb 1 - Feb 1',
           },
           {
-            yAxis: 0.5,
+            yAxis: 1,
             name: 'second',
             range: 'Feb 1 - Feb 1',
           },
@@ -282,12 +282,10 @@ describe('Gantt transformProps', () => {
           {
             yAxis: 1.5,
             name: 'series value 1',
-            range: 'Feb 1 - Feb 1',
           },
           {
             yAxis: 0.5,
             name: 'series value 2',
-            range: 'Feb 1 - Feb 1',
           },
         ],
         label: expect.objectContaining({
