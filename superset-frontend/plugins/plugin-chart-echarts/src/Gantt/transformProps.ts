@@ -224,6 +224,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
   });
 
   const borderLines: { yAxis: number }[] = [];
+  const rowLines: { yAxis: number }[] = [];
   const categoryLines: { yAxis: number; name?: string; range?: string }[] = [];
   const subcategoryLines: { yAxis: number; name?: string }[] = [];
   let sum = 0;
@@ -245,6 +246,10 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           yAxis: seriesCount - (prevSum + subCategoryIndex + 0.5),
           name: subCategoryKey ? String(subCategoryKey) : undefined,
         });
+
+        if (subCategoryIndex > 0) {
+          rowLines.push({ yAxis: seriesCount - (prevSum + subCategoryIndex) });
+        }
       });
     }
 
@@ -352,6 +357,23 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     },
     {
       animation: false,
+      type: 'line' as const,
+      markLine: {
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          // eslint-disable-next-line theme-colors/no-literal-colors
+          color: '#e9edf5',
+        },
+        label: {
+          show: false,
+        },
+        data: rowLines,
+      },
+    },
+    {
+      animation: false,
       type: 'line',
       markLine: {
         silent: true,
@@ -364,6 +386,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: true,
           position: 'start',
+          align: 'left',
           formatter: params =>
             params.name
               ? `${params.name}${
@@ -393,6 +416,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: subcategories,
           position: 'start',
+          align: 'left',
           formatter: params => (params.name ? `${params.name}` : ''),
           color: theme.colorText,
           fontSize: SUBCATEGORY_LABEL_FONT_SIZE,

@@ -90,7 +90,7 @@ describe('Gantt transformProps', () => {
       chartProps as EchartsGanttChartProps,
     );
 
-    expect(transformedProps.echartOptions.series).toHaveLength(6);
+    expect(transformedProps.echartOptions.series).toHaveLength(7);
     const series = transformedProps.echartOptions.series as any[];
     const series0 = series[0];
     const series1 = series[1];
@@ -247,6 +247,22 @@ describe('Gantt transformProps', () => {
       type: 'line',
       animation: false,
       markLine: {
+        data: [],
+        label: {
+          show: false,
+        },
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          color: '#e9edf5',
+        },
+      },
+    });
+    expect(series[4]).toEqual({
+      type: 'line',
+      animation: false,
+      markLine: {
         data: [
           {
             yAxis: 2,
@@ -262,6 +278,7 @@ describe('Gantt transformProps', () => {
         label: expect.objectContaining({
           show: true,
           position: 'start',
+          align: 'left',
           formatter: expect.any(Function),
           color: 'rgba(0,0,0,0.88)',
           fontSize: 13,
@@ -274,7 +291,7 @@ describe('Gantt transformProps', () => {
         symbol: ['none', 'none'],
       },
     });
-    expect(series[4]).toEqual({
+    expect(series[5]).toEqual({
       type: 'line',
       animation: false,
       markLine: {
@@ -291,6 +308,7 @@ describe('Gantt transformProps', () => {
         label: expect.objectContaining({
           show: true,
           position: 'start',
+          align: 'left',
           formatter: expect.any(Function),
           color: 'rgba(0,0,0,0.88)',
           fontSize: 11,
@@ -303,7 +321,7 @@ describe('Gantt transformProps', () => {
         symbol: ['none', 'none'],
       },
     });
-    expect(series[5]).toEqual({
+    expect(series[6]).toEqual({
       type: 'line',
       animation: false,
       markLine: {
