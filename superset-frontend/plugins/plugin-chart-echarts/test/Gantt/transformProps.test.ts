@@ -283,7 +283,7 @@ describe('Gantt transformProps', () => {
           color: 'rgba(0,0,0,0.88)',
           fontSize: 13,
           fontWeight: 500,
-          offset: [6, 0],
+          offset: [-2, 0],
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
@@ -316,8 +316,8 @@ describe('Gantt transformProps', () => {
           formatter: expect.any(Function),
           color: expect.anything(),
           fontSize: 10,
-          padding: [0, 0, 0, 18],
-          offset: [6, 0],
+          padding: [0, 0, 0, 14],
+          offset: [-2, 0],
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',

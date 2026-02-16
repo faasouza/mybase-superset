@@ -55,9 +55,9 @@ import { Dimension, ELEMENT_HEIGHT_SCALE } from './constants';
 
 const CATEGORY_LABEL_FONT_SIZE = 13;
 const SUBCATEGORY_LABEL_FONT_SIZE = 10;
-const SUBCATEGORY_INDENT = 18;
+const SUBCATEGORY_INDENT = 14;
 const GROUP_GAP_SIZE = 0.8;
-const LABEL_OFFSET_X = 6;
+const LABEL_OFFSET_X = -2;
 
 const formatDateRange = (start?: number, end?: number) => {
   if (start === undefined || end === undefined) {
@@ -377,6 +377,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     convertInteger(yAxisTitleMargin),
     convertInteger(xAxisTitleMargin),
   );
+  const compactLeftPadding = Math.max(8, padding.left - 6);
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
@@ -570,6 +571,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     grid: {
       ...defaultGrid,
       ...padding,
+      left: compactLeftPadding,
     },
     dataZoom: zoomable && [
       {
