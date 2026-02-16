@@ -269,12 +269,10 @@ describe('Gantt transformProps', () => {
           {
             yAxis: 2.8,
             name: 'first',
-            range: 'Feb 1 - Feb 1',
           },
           {
             yAxis: 1,
             name: 'second',
-            range: 'Feb 1 - Feb 1',
           },
         ],
         label: expect.objectContaining({
@@ -284,6 +282,8 @@ describe('Gantt transformProps', () => {
           formatter: expect.any(Function),
           color: 'rgba(0,0,0,0.88)',
           fontSize: 13,
+          fontWeight: 500,
+          offset: [6, 0],
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
@@ -301,10 +301,12 @@ describe('Gantt transformProps', () => {
           {
             yAxis: 2.3,
             name: 'series value 1',
+            range: 'Feb 1 - Feb 1',
           },
           {
             yAxis: 0.5,
             name: 'series value 2',
+            range: 'Feb 1 - Feb 1',
           },
         ],
         label: expect.objectContaining({
@@ -313,8 +315,9 @@ describe('Gantt transformProps', () => {
           align: 'left',
           formatter: expect.any(Function),
           color: expect.anything(),
-          fontSize: 11,
-          padding: [0, 0, 0, 12],
+          fontSize: 10,
+          padding: [0, 0, 0, 18],
+          offset: [6, 0],
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
