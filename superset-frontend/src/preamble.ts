@@ -34,67 +34,89 @@ import { User } from './types/bootstrapTypes';
 import getBootstrapData, { applicationRoot } from './utils/getBootstrapData';
 import './hooks/useLocale';
 
-configure();
 
-// Set hot reloader config
-if (process.env.WEBPACK_MODE === 'development') {
-  setHotLoaderConfig({ logLevel: 'debug', trackTailUpdates: false });
-}
+let initPromise: Promise<void> | null = null;
 
-// Grab initial bootstrap data
-const bootstrapData = getBootstrapData();
+export default function initPreamble(): Promise<void> {
 
-setupFormatters(
-  bootstrapData.common.d3_format,
-  bootstrapData.common.d3_time_format,
-);
-
-// Setup SupersetClient early so we can fetch language pack
-setupClient({ appRoot: applicationRoot() });
-
-// Load language pack before anything else
-(async () => {
-  const lang = bootstrapData.common.locale || 'en';
-  if (lang !== 'en') {
-    try {
-      // Second call to configure to set the language pack
-      const { json } = await SupersetClient.get({
-        endpoint: `/superset/language_pack/${lang}/`,
-      });
-      configure({ languagePack: json as LanguagePack });
-      dayjs.locale(lang);
-    } catch (err) {
-      console.warn(
-        'Failed to fetch language pack, falling back to default.',
-        err,
-      );
-      configure();
-      dayjs.locale('en');
-    }
+  if (initPromise) {
+    return initPromise;
   }
 
-  // Continue with rest of setup
-  initFeatureFlags(bootstrapData.common.feature_flags);
+  initPromise = (async () => {
 
-  setupColors(
-    bootstrapData.common.extra_categorical_color_schemes,
-    bootstrapData.common.extra_sequential_color_schemes,
-  );
+    configure();
 
-  setupDashboardComponents();
+    // Set hot reloader config
+    if (process.env.WEBPACK_MODE === 'development') {
+      setHotLoaderConfig({ logLevel: 'debug', trackTailUpdates: false });
+    }
 
-  const getMe = makeApi<void, User>({
-    method: 'GET',
-    endpoint: '/api/v1/me/',
-  });
+    // Grab initial bootstrap data
+    const bootstrapData = getBootstrapData();
 
-  if (bootstrapData.user?.isActive) {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        getMe().catch(() => {
-          // SupersetClient will redirect to login on 401
+    setupFormatters(
+      bootstrapData.common.d3_format,
+      bootstrapData.common.d3_time_format,
+    );
+
+    // Setup SupersetClient early so we can fetch language pack
+    setupClient({ appRoot: applicationRoot() });
+
+    // Load language pack before anything else
+    const lang = bootstrapData.common.locale || 'en';
+    if (lang !== 'en') {
+      try {
+        // Second call to configure to set the language pack
+        const { json } = await SupersetClient.get({
+          endpoint: `/superset/language_pack/${lang}/`,
+        });
+        configure({ languagePack: json as LanguagePack });
+        dayjs.locale(lang);
+      } catch (err) {
+        console.warn(
+          'Failed to fetch language pack, falling back to default.',
+          err,
+        );
+        configure();
+        dayjs.locale('en');
+      }
+    }
+
+      // Continue with rest of setup
+      initFeatureFlags(bootstrapData.common.feature_flags);
+
+      setupColors(
+        bootstrapData.common.extra_categorical_color_schemes,
+        bootstrapData.common.extra_sequential_color_schemes,
+      );
+
+      setupDashboardComponents();
+
+      const getMe = makeApi<void, User>({
+        method: 'GET',
+        endpoint: '/api/v1/me/',
+      });
+
+      if (bootstrapData.user?.isActive) {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            getMe().catch(() => {
+              // SupersetClient will redirect to login on 401
+            });
+          }
         });
       }
+    })().catch(err => {
+      // Allow retry by clearing the cached promise on failure
+      initPromise = null;
+      throw err;
     });
-  }
-})();
+
+  return initPromise;
+}
+
+initPreamble().catch(err => {
+  // eslint-disable-next-line no-console
+  console.error('Error during preamble initialization', err);
+});
