@@ -377,7 +377,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     convertInteger(yAxisTitleMargin),
     convertInteger(xAxisTitleMargin),
   );
-  const compactLeftPadding = Math.max(8, padding.left - 6);
+  const compactLeftPadding = Math.max(10, padding.left - 8);
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
@@ -605,6 +605,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       axisLabel: {
         formatter: xAxisFormatter,
         hideOverlap: true,
+        alignMinLabel: true,
       },
       min: bounds[0],
       max: bounds[1],

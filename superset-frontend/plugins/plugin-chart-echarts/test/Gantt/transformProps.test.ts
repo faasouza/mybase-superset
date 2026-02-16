@@ -116,6 +116,7 @@ describe('Gantt transformProps', () => {
             type: AxisType.Time,
             axisLabel: {
               hideOverlap: true,
+              alignMinLabel: true,
               formatter: expect.anything(),
             },
           },
