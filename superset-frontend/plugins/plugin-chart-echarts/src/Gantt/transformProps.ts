@@ -57,7 +57,8 @@ const CATEGORY_LABEL_FONT_SIZE = 13;
 const SUBCATEGORY_LABEL_FONT_SIZE = 10;
 const SUBCATEGORY_INDENT = 14;
 const GROUP_GAP_SIZE = 0.8;
-const LABEL_OFFSET_X = 2;
+const CATEGORY_LABEL_OFFSET_X = -8;
+const SUBCATEGORY_LABEL_OFFSET_X = -2;
 
 const formatDateRange = (start?: number, end?: number) => {
   if (start === undefined || end === undefined) {
@@ -377,7 +378,15 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     convertInteger(yAxisTitleMargin),
     convertInteger(xAxisTitleMargin),
   );
-  const compactLeftPadding = Math.max(16, padding.left + 56);
+  const longestLabelLength = Math.max(
+    ...categoryLines.map(line => line.name?.length ?? 0),
+    ...subcategoryLines.map(
+      line => `${line.name ?? ''}${line.range ? ` ${line.range}` : ''}`.length,
+    ),
+    0,
+  );
+  const estimatedLabelColumnWidth = Math.max(72, longestLabelLength * 6);
+  const compactLeftPadding = Math.max(12, estimatedLabelColumnWidth + 10);
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
@@ -467,13 +476,13 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: true,
           position: 'start',
-          align: 'left',
+          align: 'right',
           formatter: params => (params.name ? `${params.name}` : ''),
           color: theme.colorText,
           fontSize: CATEGORY_LABEL_FONT_SIZE,
           lineHeight: CATEGORY_LABEL_FONT_SIZE + 3,
           fontWeight: 500,
-          offset: [LABEL_OFFSET_X, 0],
+          offset: [CATEGORY_LABEL_OFFSET_X, 0],
         },
         data: categoryLines,
       },
@@ -492,7 +501,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: subcategories,
           position: 'start',
-          align: 'left',
+          align: 'right',
           formatter: params =>
             params.name
               ? `${params.name}${
@@ -506,7 +515,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           fontSize: SUBCATEGORY_LABEL_FONT_SIZE,
           padding: [0, 0, 0, SUBCATEGORY_INDENT],
           lineHeight: SUBCATEGORY_LABEL_FONT_SIZE + 3,
-          offset: [LABEL_OFFSET_X, 0],
+          offset: [SUBCATEGORY_LABEL_OFFSET_X, 0],
         },
         data: subcategoryLines,
       },

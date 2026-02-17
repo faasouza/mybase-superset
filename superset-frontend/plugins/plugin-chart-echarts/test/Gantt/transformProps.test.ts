@@ -279,12 +279,12 @@ describe('Gantt transformProps', () => {
         label: expect.objectContaining({
           show: true,
           position: 'start',
-          align: 'left',
+          align: 'right',
           formatter: expect.any(Function),
           color: 'rgba(0,0,0,0.88)',
           fontSize: 13,
           fontWeight: 500,
-          offset: [2, 0],
+          offset: [-8, 0]
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
@@ -313,12 +313,12 @@ describe('Gantt transformProps', () => {
         label: expect.objectContaining({
           show: true,
           position: 'start',
-          align: 'left',
+          align: 'right',
           formatter: expect.any(Function),
           color: expect.anything(),
           fontSize: 10,
           padding: [0, 0, 0, 14],
-          offset: [2, 0],
+          offset: [-2, 0]
         }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
