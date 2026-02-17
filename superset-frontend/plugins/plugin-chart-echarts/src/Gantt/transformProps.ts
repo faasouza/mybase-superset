@@ -59,6 +59,9 @@ const SUBCATEGORY_INDENT = 14;
 const GROUP_GAP_SIZE = 0.8;
 const CATEGORY_LABEL_OFFSET_X = -8;
 const SUBCATEGORY_LABEL_OFFSET_X = -2;
+const MIN_LABEL_COLUMN_WIDTH = 120;
+const MAX_LABEL_COLUMN_WIDTH = 220;
+const LABEL_TO_PLOT_GAP = 10;
 
 const formatDateRange = (start?: number, end?: number) => {
   if (start === undefined || end === undefined) {
@@ -385,8 +388,11 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     ),
     0,
   );
-  const estimatedLabelColumnWidth = Math.max(72, longestLabelLength * 6);
-  const compactLeftPadding = Math.max(12, estimatedLabelColumnWidth + 10);
+  const estimatedLabelColumnWidth = Math.max(
+    MIN_LABEL_COLUMN_WIDTH,
+    Math.min(MAX_LABEL_COLUMN_WIDTH, longestLabelLength * 6),
+  );
+  const compactLeftPadding = estimatedLabelColumnWidth + LABEL_TO_PLOT_GAP;
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
@@ -482,6 +488,9 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           fontSize: CATEGORY_LABEL_FONT_SIZE,
           lineHeight: CATEGORY_LABEL_FONT_SIZE + 3,
           fontWeight: 500,
+          width: estimatedLabelColumnWidth,
+          overflow: 'truncate',
+          ellipsis: '...',
           offset: [CATEGORY_LABEL_OFFSET_X, 0],
         },
         data: categoryLines,
@@ -515,6 +524,9 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           fontSize: SUBCATEGORY_LABEL_FONT_SIZE,
           padding: [0, 0, 0, SUBCATEGORY_INDENT],
           lineHeight: SUBCATEGORY_LABEL_FONT_SIZE + 3,
+          width: estimatedLabelColumnWidth,
+          overflow: 'truncate',
+          ellipsis: '...',
           offset: [SUBCATEGORY_LABEL_OFFSET_X, 0],
         },
         data: subcategoryLines,

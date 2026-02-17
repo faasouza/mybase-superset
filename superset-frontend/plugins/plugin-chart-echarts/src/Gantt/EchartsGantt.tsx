@@ -25,6 +25,8 @@ import { EventHandlers } from '../types';
 
 const { RadioButtonControl } = sharedControlComponents;
 
+const MIN_TIMELINE_WIDTH = 960;
+
 export default function EchartsGantt(props: EchartsGanttChartTransformedProps) {
   const {
     height,
@@ -62,6 +64,8 @@ export default function EchartsGantt(props: EchartsGanttChartTransformedProps) {
     },
   };
 
+  const chartWidth = Math.max(width, MIN_TIMELINE_WIDTH);
+
   return (
     <>
       <div ref={extraControlRef} css={{ textAlign: 'center' }}>
@@ -76,15 +80,25 @@ export default function EchartsGantt(props: EchartsGanttChartTransformedProps) {
           />
         ) : null}
       </div>
-      <Echart
-        refs={refs}
-        height={height - extraHeight}
-        width={width}
-        echartOptions={echartOptions}
-        selectedValues={selectedValues}
-        eventHandlers={eventHandlers}
-        vizType={formData.vizType}
-      />
+      <div
+        css={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          width: '100%',
+        }}
+      >
+        <div css={{ minWidth: chartWidth }}>
+          <Echart
+            refs={refs}
+            height={height - extraHeight}
+            width={chartWidth}
+            echartOptions={echartOptions}
+            selectedValues={selectedValues}
+            eventHandlers={eventHandlers}
+            vizType={formData.vizType}
+          />
+        </div>
+      </div>
     </>
   );
 }
