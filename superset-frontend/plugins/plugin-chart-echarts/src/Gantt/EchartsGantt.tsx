@@ -25,6 +25,10 @@ import { EventHandlers } from '../types';
 
 const { RadioButtonControl } = sharedControlComponents;
 
+const MIN_TIMELINE_WIDTH = 960;
+const TIMELINE_PIXELS_PER_HOUR = 120;
+const CHART_GUTTER_WIDTH = 20;
+
 export default function EchartsGantt(props: EchartsGanttChartTransformedProps) {
   const {
     height,
@@ -62,6 +66,28 @@ export default function EchartsGantt(props: EchartsGanttChartTransformedProps) {
     },
   };
 
+  const xAxis = Array.isArray(echartOptions.xAxis)
+    ? echartOptions.xAxis[0]
+    : echartOptions.xAxis;
+  const grid = Array.isArray(echartOptions.grid)
+    ? echartOptions.grid[0]
+    : echartOptions.grid;
+
+  const minTime = typeof xAxis?.min === 'number' ? xAxis.min : undefined;
+  const maxTime = typeof xAxis?.max === 'number' ? xAxis.max : undefined;
+  const timelineHours =
+    minTime !== undefined && maxTime !== undefined && maxTime > minTime
+      ? (maxTime - minTime) / (1000 * 60 * 60)
+      : 0;
+  const timelineMinWidth = Math.max(
+    MIN_TIMELINE_WIDTH,
+    Math.ceil(timelineHours) * TIMELINE_PIXELS_PER_HOUR,
+  );
+  const labelColumnWidth =
+    typeof grid?.left === 'number' ? grid.left : Number(grid?.left) || 0;
+  const chartMinWidth = labelColumnWidth + timelineMinWidth + CHART_GUTTER_WIDTH;
+  const chartWidth = Math.max(width, chartMinWidth);
+
   return (
     <>
       <div ref={extraControlRef} css={{ textAlign: 'center' }}>
@@ -76,15 +102,25 @@ export default function EchartsGantt(props: EchartsGanttChartTransformedProps) {
           />
         ) : null}
       </div>
-      <Echart
-        refs={refs}
-        height={height - extraHeight}
-        width={width}
-        echartOptions={echartOptions}
-        selectedValues={selectedValues}
-        eventHandlers={eventHandlers}
-        vizType={formData.vizType}
-      />
+      <div
+        css={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          width: '100%',
+        }}
+      >
+        <div css={{ width: chartWidth }}>
+          <Echart
+            refs={refs}
+            height={height - extraHeight}
+            width={chartWidth}
+            echartOptions={echartOptions}
+            selectedValues={selectedValues}
+            eventHandlers={eventHandlers}
+            vizType={formData.vizType}
+          />
+        </div>
+      </div>
     </>
   );
 }

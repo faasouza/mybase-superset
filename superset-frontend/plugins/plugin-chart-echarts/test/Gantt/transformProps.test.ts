@@ -90,7 +90,7 @@ describe('Gantt transformProps', () => {
       chartProps as EchartsGanttChartProps,
     );
 
-    expect(transformedProps.echartOptions.series).toHaveLength(4);
+    expect(transformedProps.echartOptions.series).toHaveLength(7);
     const series = transformedProps.echartOptions.series as any[];
     const series0 = series[0];
     const series1 = series[1];
@@ -106,6 +106,7 @@ describe('Gantt transformProps', () => {
       expect.objectContaining({
         echartOptions: expect.objectContaining({
           useUTC: true,
+          backgroundColor: '#f7f8fa',
           xAxis: {
             name: '',
             nameGap: 0,
@@ -115,6 +116,7 @@ describe('Gantt transformProps', () => {
             type: AxisType.Time,
             axisLabel: {
               hideOverlap: true,
+              alignMinLabel: true,
               formatter: expect.anything(),
             },
           },
@@ -125,8 +127,7 @@ describe('Gantt transformProps', () => {
             type: AxisType.Value,
             // always 0
             min: 0,
-            // equals unique categories count
-            max: 2,
+            max: 2.8,
             axisLabel: {
               show: false,
             },
@@ -164,7 +165,7 @@ describe('Gantt transformProps', () => {
             Date.UTC(2025, 1, 1, 13, 0, 0),
             Date.UTC(2025, 1, 1, 14, 0, 0),
             0,
-            2,
+            2.8,
             Date.UTC(2025, 1, 1, 13, 0, 0),
             Date.UTC(2025, 1, 1, 14, 0, 0),
             'first',
@@ -202,7 +203,7 @@ describe('Gantt transformProps', () => {
             Date.UTC(2025, 1, 1, 18, 0, 0),
             Date.UTC(2025, 1, 1, 20, 0, 0),
             1,
-            2,
+            2.8,
             Date.UTC(2025, 1, 1, 18, 0, 0),
             Date.UTC(2025, 1, 1, 20, 0, 0),
             'second',
@@ -231,15 +232,16 @@ describe('Gantt transformProps', () => {
       type: 'line',
       animation: false,
       markLine: {
-        data: [{ yAxis: 1 }, { yAxis: 0 }],
+        data: [{ yAxis: 1.4 }],
         label: {
           show: false,
         },
         silent: true,
         symbol: ['none', 'none'],
         lineStyle: {
-          type: 'dashed',
-          color: '#dbe0ea',
+          type: 'solid',
+          width: 1,
+          color: '#d9dee8',
         },
       },
     });
@@ -247,16 +249,43 @@ describe('Gantt transformProps', () => {
       type: 'line',
       animation: false,
       markLine: {
-        data: [
-          { yAxis: 1.5, name: 'first' },
-          { yAxis: 0.5, name: 'second' },
-        ],
+        data: [],
         label: {
+          show: false,
+        },
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          width: 1,
+          color: '#eceff5',
+        },
+      },
+    });
+    expect(series[4]).toEqual({
+      type: 'line',
+      animation: false,
+      markLine: {
+        data: [
+          {
+            yAxis: 2.8,
+            name: 'first',
+          },
+          {
+            yAxis: 1,
+            name: 'second',
+          },
+        ],
+        label: expect.objectContaining({
           show: true,
           position: 'start',
-          formatter: '{b}',
+          align: 'right',
+          formatter: expect.any(Function),
           color: 'rgba(0,0,0,0.88)',
-        },
+          fontSize: 13,
+          fontWeight: 500,
+          offset: [-8, 0],
+        }),
         lineStyle: expect.objectContaining({
           color: '#00000000',
           type: 'solid',
@@ -265,5 +294,96 @@ describe('Gantt transformProps', () => {
         symbol: ['none', 'none'],
       },
     });
+    expect(series[5]).toEqual({
+      type: 'line',
+      animation: false,
+      markLine: {
+        data: [
+          {
+            yAxis: 2.3,
+            name: 'series value 1',
+            range: 'Feb 1 - Feb 1',
+          },
+          {
+            yAxis: 0.5,
+            name: 'series value 2',
+            range: 'Feb 1 - Feb 1',
+          },
+        ],
+        label: expect.objectContaining({
+          show: true,
+          position: 'start',
+          align: 'right',
+          formatter: expect.any(Function),
+          color: expect.anything(),
+          fontSize: 10,
+          padding: [0, 0, 0, 14],
+          offset: [-2, 0],
+        }),
+        lineStyle: expect.objectContaining({
+          color: '#00000000',
+          type: 'solid',
+        }),
+        silent: true,
+        symbol: ['none', 'none'],
+      },
+    });
+    expect(series[6]).toEqual({
+      type: 'line',
+      animation: false,
+      markLine: {
+        data: [{ xAxis: expect.any(Number) }],
+        label: {
+          show: false,
+        },
+        lineStyle: {
+          type: 'solid',
+          width: 2,
+          color: '#3b82f6',
+        },
+        silent: true,
+        symbol: ['none', 'none'],
+      },
+    });
+  });
+
+  it('should add vertical row scrolling when there are many visual rows', () => {
+    const denseRows = Array.from({ length: 14 }).map((_, idx) => ({
+      startTime: Date.UTC(2025, 1, 1, 8 + (idx % 4), 0, 0),
+      endTime: Date.UTC(2025, 1, 1, 9 + (idx % 4), 0, 0),
+      'Y Axis': `group-${idx + 1}`,
+      tooltip_column: `tooltip value ${idx + 1}`,
+      series: `series-${idx + 1}`,
+    }));
+
+    const chartProps = new ChartProps({
+      ...chartPropsConfig,
+      queriesData: [
+        {
+          ...queriesData[0],
+          data: denseRows,
+        },
+      ],
+    });
+
+    const transformedProps = transformProps(
+      chartProps as EchartsGanttChartProps,
+    );
+
+    expect(transformedProps.echartOptions.dataZoom).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'slider',
+          filterMode: 'none',
+          yAxisIndex: [0],
+        }),
+        expect.objectContaining({
+          type: 'inside',
+          filterMode: 'none',
+          yAxisIndex: [0],
+          zoomOnMouseWheel: false,
+        }),
+      ]),
+    );
   });
 });

@@ -53,6 +53,23 @@ import { convertInteger } from '../utils/convertInteger';
 import { getTooltipLabels } from '../utils/tooltip';
 import { Dimension, ELEMENT_HEIGHT_SCALE } from './constants';
 
+const CATEGORY_LABEL_FONT_SIZE = 13;
+const SUBCATEGORY_LABEL_FONT_SIZE = 10;
+const SUBCATEGORY_INDENT = 14;
+const GROUP_GAP_SIZE = 0.8;
+const CATEGORY_LABEL_OFFSET_X = -8;
+const SUBCATEGORY_LABEL_OFFSET_X = -2;
+const MIN_LABEL_COLUMN_WIDTH = 120;
+const LABEL_TO_PLOT_GAP = 10;
+const MAX_VISIBLE_ROWS = 12;
+
+const formatDateRange = (start?: number, end?: number) => {
+  if (start === undefined || end === undefined) {
+    return undefined;
+  }
+  return `${dayjs.utc(start).format('MMM D')} - ${dayjs.utc(end).format('MMM D')}`;
+};
+
 const renderItem: CustomSeriesRenderItem = (params, api) => {
   const startX = api.value(Dimension.StartTime);
   const endX = api.value(Dimension.EndTime);
@@ -96,6 +113,7 @@ const renderItem: CustomSeriesRenderItem = (params, api) => {
       y: startCoord[1] - height - (baseHeight - height) / 2,
       width,
       height,
+      r: 3,
     },
     style: api.style(),
   };
@@ -156,12 +174,60 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
 
   const seriesMap = groupData(data, dimensionLabel);
 
+  const categoryTimeBounds = new Map<
+    DataRecordValue | undefined,
+    { minStart: number; maxEnd: number }
+  >();
+  const subcategoryTimeBounds = new Map<
+    DataRecordValue | undefined,
+    Map<DataRecordValue | undefined, { minStart: number; maxEnd: number }>
+  >();
+
   const seriesInCategoriesMap = new Map<
     DataRecordValue | undefined,
     Map<DataRecordValue | undefined, number>
   >();
   data.forEach(datum => {
     const category = datum[yAxisLabel];
+    const start = Number(datum[startTimeLabel]);
+    const end = Number(datum[endTimeLabel]);
+
+    if (!Number.isNaN(start) && !Number.isNaN(end)) {
+      const categoryBounds = categoryTimeBounds.get(category);
+      categoryTimeBounds.set(category, {
+        minStart: categoryBounds ? Math.min(categoryBounds.minStart, start) : start,
+        maxEnd: categoryBounds ? Math.max(categoryBounds.maxEnd, end) : end,
+      });
+
+      if (dimensionLabel && subcategories) {
+        const subCategory = datum[dimensionLabel];
+        const categorySubBounds = subcategoryTimeBounds.get(category);
+        const subCategoryBounds = categorySubBounds?.get(subCategory);
+
+        if (categorySubBounds) {
+          categorySubBounds.set(subCategory, {
+            minStart: subCategoryBounds
+              ? Math.min(subCategoryBounds.minStart, start)
+              : start,
+            maxEnd: subCategoryBounds ? Math.max(subCategoryBounds.maxEnd, end) : end,
+          });
+        } else {
+          subcategoryTimeBounds.set(
+            category,
+            new Map([
+              [
+                subCategory,
+                {
+                  minStart: start,
+                  maxEnd: end,
+                },
+              ],
+            ]),
+          );
+        }
+      }
+    }
+
     let dimensionValue: DataRecordValue | undefined;
     if (dimensionLabel) {
       if (legendState && !legendState[String(datum[dimensionLabel])]) {
@@ -182,33 +248,95 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     }
   });
 
-  let seriesCount = 0;
+  let visualSeriesCount = 0;
   const categoryAndSeriesToIndexMap: typeof seriesInCategoriesMap = new Map();
-  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map]) => {
+  const categoryPositionMap = new Map<
+    DataRecordValue | undefined,
+    {
+      start: number;
+      end: number;
+      size: number;
+    }
+  >();
+
+  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map], groupIndex, arr) => {
+    const groupSize = map.size;
+    const groupStart = visualSeriesCount;
+
     categoryAndSeriesToIndexMap.set(
       key,
       new Map(
-        Array.from(map.entries()).map(([key2, idx]) => [
-          key2,
-          seriesCount + idx,
-        ]),
+        Array.from(map.entries()).map(([key2, idx]) => [key2, groupStart + idx]),
       ),
     );
-    seriesCount += map.size;
+
+    categoryPositionMap.set(key, {
+      start: groupStart,
+      end: groupStart + groupSize - 1,
+      size: groupSize,
+    });
+
+    visualSeriesCount += groupSize;
+
+    if (groupIndex < arr.length - 1) {
+      visualSeriesCount += GROUP_GAP_SIZE;
+    }
   });
 
   const borderLines: { yAxis: number }[] = [];
+  const rowLines: { yAxis: number }[] = [];
   const categoryLines: { yAxis: number; name?: string }[] = [];
-  let sum = 0;
-  let prevSum = 0;
-  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map]) => {
-    sum += map.size;
+  const subcategoryLines: { yAxis: number; name?: string; range?: string }[] = [];
+
+  Array.from(seriesInCategoriesMap.entries()).forEach(([key, map], groupIndex, arr) => {
+    const position = categoryPositionMap.get(key);
+    if (!position) {
+      return;
+    }
+
     categoryLines.push({
-      yAxis: seriesCount - (sum + prevSum) / 2,
+      yAxis: subcategories
+        ? visualSeriesCount - position.start
+        : visualSeriesCount - (position.start + position.end + 1) / 2,
       name: key ? String(key) : undefined,
     });
-    borderLines.push({ yAxis: seriesCount - sum });
-    prevSum = sum;
+
+    if (!subcategories) {
+      subcategoryLines.push({
+        yAxis: visualSeriesCount - (position.start + position.end + 1) / 2,
+        range: formatDateRange(
+          categoryTimeBounds.get(key)?.minStart,
+          categoryTimeBounds.get(key)?.maxEnd,
+        ),
+      });
+    }
+
+    if (subcategories) {
+      Array.from(map.entries()).forEach(([subCategoryKey], subCategoryIndex) => {
+        const rowIndex = position.start + subCategoryIndex;
+        const range = formatDateRange(
+          subcategoryTimeBounds.get(key)?.get(subCategoryKey)?.minStart,
+          subcategoryTimeBounds.get(key)?.get(subCategoryKey)?.maxEnd,
+        );
+
+        subcategoryLines.push({
+          yAxis: visualSeriesCount - (rowIndex + 0.5),
+          name: subCategoryKey ? String(subCategoryKey) : undefined,
+          range,
+        });
+
+        if (subCategoryIndex > 0) {
+          rowLines.push({ yAxis: visualSeriesCount - rowIndex });
+        }
+      });
+    }
+
+    if (groupIndex < arr.length - 1) {
+      borderLines.push({
+        yAxis:
+          visualSeriesCount - (position.end + 1 + GROUP_GAP_SIZE / 2),
+      });
+    }
   });
 
   const xAxisFormatter = getXAxisFormatter(xAxisTimeFormat);
@@ -253,6 +381,18 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     convertInteger(yAxisTitleMargin),
     convertInteger(xAxisTitleMargin),
   );
+  const longestLabelLength = Math.max(
+    ...categoryLines.map(line => line.name?.length ?? 0),
+    ...subcategoryLines.map(
+      line => `${line.name ?? ''}${line.range ? ` ${line.range}` : ''}`.length,
+    ),
+    0,
+  );
+  const estimatedLabelColumnWidth = Math.max(
+    MIN_LABEL_COLUMN_WIDTH,
+    longestLabelLength * 6,
+  );
+  const compactLeftPadding = estimatedLabelColumnWidth + LABEL_TO_PLOT_GAP;
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
@@ -280,7 +420,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           datum[startTimeLabel],
           datum[endTimeLabel],
           getIndex(datum),
-          seriesCount,
+          visualSeriesCount,
           ...Object.values(datum),
         ],
       })),
@@ -299,14 +439,33 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         silent: true,
         symbol: ['none', 'none'],
         lineStyle: {
-          type: 'dashed',
+          type: 'solid',
+          width: 1,
           // eslint-disable-next-line theme-colors/no-literal-colors
-          color: '#dbe0ea',
+          color: '#d9dee8',
         },
         label: {
           show: false,
         },
         data: borderLines,
+      },
+    },
+    {
+      animation: false,
+      type: 'line' as const,
+      markLine: {
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          width: 1,
+          // eslint-disable-next-line theme-colors/no-literal-colors
+          color: '#eceff5',
+        },
+        label: {
+          show: false,
+        },
+        data: rowLines,
       },
     },
     {
@@ -323,10 +482,66 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
         label: {
           show: true,
           position: 'start',
-          formatter: '{b}',
+          align: 'right',
+          formatter: params => (params.name ? `${params.name}` : ''),
           color: theme.colorText,
+          fontSize: CATEGORY_LABEL_FONT_SIZE,
+          lineHeight: CATEGORY_LABEL_FONT_SIZE + 3,
+          fontWeight: 500,
+          offset: [CATEGORY_LABEL_OFFSET_X, 0],
         },
         data: categoryLines,
+      },
+    },
+    {
+      animation: false,
+      type: 'line',
+      markLine: {
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          // eslint-disable-next-line theme-colors/no-literal-colors
+          color: '#00000000',
+        },
+        label: {
+          show: subcategories,
+          position: 'start',
+          align: 'right',
+          formatter: params =>
+            params.name
+              ? `${params.name}${
+                  (params.data as { range?: string } | undefined)?.range
+                    ? `\n${(params.data as { range?: string }).range}`
+                    : ''
+                }`
+              :
+                (params.data as { range?: string } | undefined)?.range || '',
+          color: (theme as { colorTextLabel?: string }).colorTextLabel ?? theme.colorText,
+          fontSize: SUBCATEGORY_LABEL_FONT_SIZE,
+          padding: [0, 0, 0, SUBCATEGORY_INDENT],
+          lineHeight: SUBCATEGORY_LABEL_FONT_SIZE + 3,
+          offset: [SUBCATEGORY_LABEL_OFFSET_X, 0],
+        },
+        data: subcategoryLines,
+      },
+    },
+    {
+      animation: false,
+      type: 'line',
+      markLine: {
+        silent: true,
+        symbol: ['none', 'none'],
+        lineStyle: {
+          type: 'solid',
+          width: 2,
+          // eslint-disable-next-line theme-colors/no-literal-colors
+          color: '#3b82f6',
+        },
+        label: {
+          show: false,
+        },
+        data: [{ xAxis: Date.now() }],
       },
     },
   );
@@ -337,6 +552,46 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     [GenericDataType.Temporal]: tooltipTimeFormatter,
     [GenericDataType.Boolean]: undefined,
   };
+
+  const dataZoom: Array<Record<string, unknown>> = [];
+
+  if (zoomable) {
+    dataZoom.push({
+      type: 'slider',
+      filterMode: 'none',
+      start: TIMESERIES_CONSTANTS.dataZoomStart,
+      end: TIMESERIES_CONSTANTS.dataZoomEnd,
+      bottom: TIMESERIES_CONSTANTS.zoomBottom,
+    });
+  }
+
+  if (visualSeriesCount > MAX_VISIBLE_ROWS) {
+    const visiblePercent = Math.max(
+      5,
+      Math.min(100, (MAX_VISIBLE_ROWS / visualSeriesCount) * 100),
+    );
+    dataZoom.push(
+      {
+        type: 'inside',
+        yAxisIndex: [0],
+        filterMode: 'none',
+        start: 0,
+        end: visiblePercent,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: true,
+        zoomOnMouseWheel: false,
+      },
+      {
+        type: 'slider',
+        yAxisIndex: [0],
+        filterMode: 'none',
+        start: 0,
+        end: visiblePercent,
+        width: 10,
+        right: 4,
+      },
+    );
+  }
 
   const echartOptions: EChartsCoreOption = {
     useUTC: true,
@@ -357,6 +612,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
           dimensionLabel ? params.seriesName : undefined,
         ),
     },
+    backgroundColor: '#f7f8fa',
     legend: {
       ...getLegendProps(
         legendType,
@@ -370,16 +626,9 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     grid: {
       ...defaultGrid,
       ...padding,
+      left: compactLeftPadding,
     },
-    dataZoom: zoomable && [
-      {
-        type: 'slider',
-        filterMode: 'none',
-        start: TIMESERIES_CONSTANTS.dataZoomStart,
-        end: TIMESERIES_CONSTANTS.dataZoomEnd,
-        bottom: TIMESERIES_CONSTANTS.zoomBottom,
-      },
-    ],
+    dataZoom: dataZoom.length ? dataZoom : undefined,
     toolbox: {
       show: zoomable,
       top: TIMESERIES_CONSTANTS.toolboxTop,
@@ -403,6 +652,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       axisLabel: {
         formatter: xAxisFormatter,
         hideOverlap: true,
+        alignMinLabel: true,
       },
       min: bounds[0],
       max: bounds[1],
@@ -419,7 +669,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       },
       type: AxisType.Value,
       min: 0,
-      max: seriesCount,
+      max: visualSeriesCount,
     },
   };
 
