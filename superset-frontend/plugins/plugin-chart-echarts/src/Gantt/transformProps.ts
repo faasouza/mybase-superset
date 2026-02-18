@@ -61,6 +61,7 @@ const CATEGORY_LABEL_OFFSET_X = -8;
 const SUBCATEGORY_LABEL_OFFSET_X = -2;
 const MIN_LABEL_COLUMN_WIDTH = 120;
 const LABEL_TO_PLOT_GAP = 10;
+const MAX_VISIBLE_ROWS = 12;
 
 const formatDateRange = (start?: number, end?: number) => {
   if (start === undefined || end === undefined) {
@@ -552,6 +553,46 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     [GenericDataType.Boolean]: undefined,
   };
 
+  const dataZoom: NonNullable<EChartsCoreOption['dataZoom']> = [];
+
+  if (zoomable) {
+    dataZoom.push({
+      type: 'slider',
+      filterMode: 'none',
+      start: TIMESERIES_CONSTANTS.dataZoomStart,
+      end: TIMESERIES_CONSTANTS.dataZoomEnd,
+      bottom: TIMESERIES_CONSTANTS.zoomBottom,
+    });
+  }
+
+  if (visualSeriesCount > MAX_VISIBLE_ROWS) {
+    const visiblePercent = Math.max(
+      5,
+      Math.min(100, (MAX_VISIBLE_ROWS / visualSeriesCount) * 100),
+    );
+    dataZoom.push(
+      {
+        type: 'inside',
+        yAxisIndex: [0],
+        filterMode: 'none',
+        start: 0,
+        end: visiblePercent,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: true,
+        zoomOnMouseWheel: false,
+      },
+      {
+        type: 'slider',
+        yAxisIndex: [0],
+        filterMode: 'none',
+        start: 0,
+        end: visiblePercent,
+        width: 10,
+        right: 4,
+      },
+    );
+  }
+
   const echartOptions: EChartsCoreOption = {
     useUTC: true,
     tooltip: {
@@ -587,15 +628,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
       ...padding,
       left: compactLeftPadding,
     },
-    dataZoom: zoomable && [
-      {
-        type: 'slider',
-        filterMode: 'none',
-        start: TIMESERIES_CONSTANTS.dataZoomStart,
-        end: TIMESERIES_CONSTANTS.dataZoomEnd,
-        bottom: TIMESERIES_CONSTANTS.zoomBottom,
-      },
-    ],
+    dataZoom: dataZoom.length ? dataZoom : undefined,
     toolbox: {
       show: zoomable,
       top: TIMESERIES_CONSTANTS.toolboxTop,

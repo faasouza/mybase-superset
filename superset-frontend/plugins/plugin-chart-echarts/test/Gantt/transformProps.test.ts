@@ -346,4 +346,44 @@ describe('Gantt transformProps', () => {
       },
     });
   });
+
+  it('should add vertical row scrolling when there are many visual rows', () => {
+    const denseRows = Array.from({ length: 14 }).map((_, idx) => ({
+      startTime: Date.UTC(2025, 1, 1, 8 + (idx % 4), 0, 0),
+      endTime: Date.UTC(2025, 1, 1, 9 + (idx % 4), 0, 0),
+      'Y Axis': `group-${idx + 1}`,
+      tooltip_column: `tooltip value ${idx + 1}`,
+      series: `series-${idx + 1}`,
+    }));
+
+    const chartProps = new ChartProps({
+      ...chartPropsConfig,
+      queriesData: [
+        {
+          ...queriesData[0],
+          data: denseRows,
+        },
+      ],
+    });
+
+    const transformedProps = transformProps(
+      chartProps as EchartsGanttChartProps,
+    );
+
+    expect(transformedProps.echartOptions.dataZoom).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'slider',
+          filterMode: 'none',
+          yAxisIndex: [0],
+        }),
+        expect.objectContaining({
+          type: 'inside',
+          filterMode: 'none',
+          yAxisIndex: [0],
+          zoomOnMouseWheel: false,
+        }),
+      ]),
+    );
+  });
 });
