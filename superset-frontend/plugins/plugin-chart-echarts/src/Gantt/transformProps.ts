@@ -553,7 +553,7 @@ export default function transformProps(chartProps: EchartsGanttChartProps) {
     [GenericDataType.Boolean]: undefined,
   };
 
-  const dataZoom: NonNullable<EChartsCoreOption['dataZoom']> = [];
+  const dataZoom: Array<Record<string, unknown>> = [];
 
   if (zoomable) {
     dataZoom.push({
